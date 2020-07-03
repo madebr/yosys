@@ -17,14 +17,15 @@
  *
  */
 
-%{
-#include <list>
-#include <stack>
-#include <cstring>
-#include "frontends/firrtl/firrtl_parser.tab.hh"
+%code top {
+#include "firrtl_internal.h"
+}
+
+%code {
 #include "kernel/log.h"
 
-#define YYLEX_PARAM &yylval, &yylloc
+#include "firrtl_lexer.h"
+#include <cstring>
 
 USING_YOSYS_NAMESPACE
 using namespace FIRRTL_FRONTEND;
@@ -48,26 +49,20 @@ YOSYS_NAMESPACE_END
     (LHS).last_line = (END).last_line; \
     (LHS).last_column = (END).last_column; } while(0)
 
-int frontend_firrtl_yylex(YYSTYPE *yylval_param, YYLTYPE *yyloc_param);
+}
 
-%}
 
-%define api.prefix {frontend_firrtl_yy}
-%define api.pure
-
-/* The union is defined in the header, so we need to provide all the
- * includes it requires
- */
 %code requires {
-#include <string>
+
 #include "frontends/firrtl/firrtl_frontend.h"
+
+/* Dependencies of the value type */
+
+#include <string>
 }
 
 %union {
 	std::string *string;
-	bool boolean;
-	int integer;
-	char ch;
 }
 
 %token <string> TOK_CONSTVAL TOK_BASED_CONSTVAL TOK_NEG_DECIMAL_CONSTVAL TOK_DECIMAL_CONSTVAL
@@ -75,18 +70,27 @@ int frontend_firrtl_yylex(YYSTYPE *yylval_param, YYLTYPE *yyloc_param);
 %token TOK_CIRCUIT TOK_MODULE TOK_EXTMODULE TOK_INPUT TOK_OUTPUT TOK_UINT TOK_SINT TOK_CLOCK 
 %token TOK_WIRE TOK_REG TOK_MEM TOK_INST TOK_NODE TOK_DATA_TYPE TOK_DEPTH TOK_READ_LATENCY
 %token TOK_MUX TOK_RESET TOK_VALIDIF TOK_WITH TOK_ADD TOK_SUB TOK_MUL TOK_DIV TOK_MOD TOK_LT
-%token TOK_LEQ TOK_GT TOK_GEQ TOK_EQ TOK_NEQ TOK_PAD TOK_ASUINT TOK_ASSINT TOK_SHL TOK_SHR
-%token TOK_DSHL TOK_DSHR TOK_CVT TOK_NEG TOK_NOT TOK_AND TOK_OR TOK_XOR TOK_ANDR TOK_ORR
+%token TOK_LEQ TOK_GT TOK_GEQ TOK_EQ TOK_NEQ TOK_PAD TOK_ASUINT TOK_ASSINT TOK_ASFIXED TOK_ASCLOCK
+%token TOK_SHL TOK_SHR TOK_DSHL TOK_DSHR TOK_CVT TOK_NEG TOK_NOT TOK_AND TOK_OR TOK_XOR TOK_ANDR TOK_ORR
 %token TOK_XORR TOK_CAT TOK_BITS TOK_HEAD TOK_TAIL
 %token TOK_WRITE_LATENCY TOK_READ_UNDER_WRITE TOK_READER TOK_WRITER TOK_READWRITER
+%token TOK_INDENT TOK_DEDENT TOK_NEWLINE
+%token TOK_WHEN TOK_ELSE TOK_SKIP
 
-%type <string> identifier integral_number
+%nterm <string> identifier integral_number
+
+%destructor { delete $$; } <string>
 
 // operator precedence
 // TODO
 
+%define api.prefix {frontend_firrtl_yy}
+%define api.pure full
+%define api.push-pull both
+
 %define parse.error verbose
 %define parse.lac full
+%param { Yosys::FIRRTL_FRONTEND::firrtl_state_t *state }
 
 %debug
 %locations
@@ -183,6 +187,8 @@ primitive_op:
 	TOK_PAD |
 	TOK_ASUINT |
 	TOK_ASSINT |
+	TOK_ASFIXED |
+	TOK_ASCLOCK |
 	TOK_SHL |
 	TOK_SHR |
 	TOK_DSHL |

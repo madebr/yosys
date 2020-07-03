@@ -1,7 +1,7 @@
 /*
  *  yosys -- Yosys Open SYnthesis Suite
  *
- *  Copyright (C) 2020  Alberto Gonzalez <boqwxp@airmail.cc>
+ *  Copyright (C) 2020  De Braekeleer Maarten <madebr@gmail.com>
  *
  *  Permission to use, copy, modify, and/or distribute this software for any
  *  purpose with or without fee is hereby granted, provided that the above
@@ -17,42 +17,13 @@
  *
  */
 
-#ifndef FIRRTL_FRONTEND_H
-#define FIRRTL_FRONTEND_H
+#ifndef FIRRTL_AST_H
+#define FIRRTL_AST_H
 
 #include "kernel/yosys.h"
-#include "frontends/ast/ast.h"
-
-#include <iosfwd>
-#include <string>
-#include <vector>
 
 YOSYS_NAMESPACE_BEGIN
 
-namespace FIRRTL_FRONTEND
-{
-	struct firrtl_state_t;
-//	struct firrtl_state_t {
-//		// lexer input stream
-//		std::istream *lexin = nullptr;
-//
-//		// filename of current file
-//		std::string current_filename;
-//
-//		// lexer string literal buffer
-//		std::string lex_buf_string_literal;
-//
-//		// lexer number of dedent tokens left to emit
-//		unsigned nb_dedent_tokens{};
-//
-//		// lexer need to emit an indent token?
-//		bool indent_token;
-//
-//		// lexer indentation stack
-//		std::vector<int> indent_stack;
-//
-//	};
-}
 
 YOSYS_NAMESPACE_END
 

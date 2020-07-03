@@ -238,6 +238,9 @@ static void addRange(AstNode *parent, int msb = 31, int lsb = 0, bool isSigned =
 %type <ast> specify_if specify_condition
 %type <ch> specify_edge
 
+// Free discarded symbols
+%destructor { delete $$; } <string> <ast>
+
 // operator precedence from low to high
 %left OP_LOR
 %left OP_LAND

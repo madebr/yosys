@@ -1,0 +1,5 @@
+firrtl_lexer.cc
+firrtl_lexer.h
+firrtl_parser.output
+firrtl_parser.tab.cc
+firrtl_parser.tab.hh

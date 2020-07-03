@@ -89,6 +89,7 @@ PLUGIN_LDFLAGS :=
 PKG_CONFIG ?= pkg-config
 SED ?= sed
 BISON ?= bison
+FLEX ?= flex
 STRIP ?= strip
 AWK ?= awk
 
