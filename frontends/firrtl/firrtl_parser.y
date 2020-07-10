@@ -75,10 +75,11 @@ YOSYS_NAMESPACE_END
 %token TOK_NODE
 %token TOK_WIRE TOK_IS TOK_INVALID
 %token TOK_REG TOK_WITH TOK_RESET
+%token TOK_ATTACH
 
 %token TOK_MEM
-/* Are the tokens for settings of memory needed? */
-%token TOK_DATA_TYPE TOK_READ_LATENCY TOK_WRITE_LATENCY TOK_READ_UNDER_WRITE TOK_READER TOK_WRITER TOK_READWRITER
+/* This effectively makes depth, reader, writer ... reserved keywords. Do we want this? */
+%token TOK_DEPTH TOK_DATA_TYPE TOK_READ_LATENCY TOK_WRITE_LATENCY TOK_READ_UNDER_WRITE TOK_READER TOK_WRITER TOK_READWRITER
 %token TOK_UNDEFINED TOK_OLD TOK_NEW
 %token TOK_INST TOK_OF
 
@@ -93,11 +94,10 @@ YOSYS_NAMESPACE_END
 %token TOK_CAT TOK_BITS TOK_HEAD TOK_TAIL
 %token TOK_INCP TOK_DECP TOK_SETP
 
-
-%token <string> TOK_CONSTVAL TOK_BASED_CONSTVAL TOK_NEG_DECIMAL_CONSTVAL TOK_DECIMAL_CONSTVAL
+/* FIXME: change type: base + value */
+%token <string> TOK_INT
+//%token <string> TOK_CONSTVAL TOK_BASED_CONSTVAL TOK_NEG_DECIMAL_CONSTVAL TOK_DECIMAL_CONSTVAL
 %token <string> TOK_ID TOK_QUOTED_STRING
-
-%nterm <string> integral_number
 
 %destructor { delete $$; } <string>
 
@@ -123,19 +123,19 @@ circuit:
 
 opt_info_attr:
 	'@' '[' TOK_QUOTED_STRING ']' |
-	/* empty */;
+	%empty ;
 
 module_list:
 	module_list module |
-	/* empty */;
+	%empty ;
 
 module:
-	TOK_MODULE TOK_ID ':' opt_info_attr TOK_INDENT port_list stmt TOK_DEDENT |
-	TOK_EXTMODULE TOK_ID ':' opt_info_attr '(' port_list ')';
+	TOK_MODULE TOK_ID ':' opt_info_attr TOK_INDENT port_list stmts TOK_DEDENT |
+	TOK_EXTMODULE TOK_ID ':' opt_info_attr TOK_INDENT port_list TOK_DEDENT ;
 
 port_list:
 	port_list port |
-	/* empty */;
+	%empty ;
 
 port:
 	port_dir TOK_ID ':' type opt_info_attr;
@@ -163,47 +163,85 @@ field:
 
 opt_flip:
 	TOK_FLIP |
-	/* empty */;
+	%empty ;
 
 opt_width:
-	'<' integral_number '>' |
-	/* empty */;
+	'<' TOK_INT '>' |
+	%empty ;
 
 opt_fixed_width:
-	'<' '<' integral_number '>' '>' |
-	/* empty */;
+	'<' '<' TOK_INT '>' '>' |
+	%empty ;
+
+/* Better name for stmts? */
+stmts:
+	stmts stmt |
+	stmt ;
 
 stmt:
 	TOK_WIRE TOK_ID ':' type opt_info_attr |
-	TOK_REG TOK_ID ':' type expr opt_reg_width_spec opt_info_attr |
-	/* empty */;
+	TOK_REG TOK_ID ':' type ',' expr opt_reg_with_spec opt_info_attr |
+	TOK_MEM TOK_ID ':' opt_info_attr TOK_INDENT mem_properties TOK_DEDENT |
+	TOK_INST TOK_ID TOK_OF TOK_ID opt_info_attr |
+	TOK_NODE TOK_ID '=' expr opt_info_attr |
+	expr TOK_CONNECT expr opt_info_attr |
+	expr TOK_PARTIAL expr opt_info_attr |
+	expr TOK_IS TOK_INVALID opt_info_attr |
+	TOK_ATTACH '(' expr_list ')' opt_info_attr |
+	TOK_WHEN expr ':' opt_info_attr cond_body opt_else |
+	TOK_STOP '(' expr ',' expr ',' TOK_INT ')' opt_info_attr |
+	TOK_PRINTF '(' expr ',' expr ',' TOK_QUOTED_STRING expr_varargs ')' opt_info_attr |
+	TOK_SKIP opt_info_attr ;
 	/* TODO */
 
+cond_body: /* use midrules for context? Or do this at postprocessing? */
+	TOK_INDENT stmt TOK_DEDENT |
+	stmts ;
+
+opt_else:
+	TOK_ELSE ':' TOK_INDENT stmt TOK_DEDENT |
+	TOK_ELSE ':' stmts |
+	%empty ;
+
+expr_varargs:
+	expr_varargs ',' expr |
+	%empty ;
+
 expr:
-	TOK_UINT opt_width '(' integral_number ')' |
+	TOK_UINT opt_width '(' TOK_INT ')' |
 	TOK_UINT opt_width '(' TOK_QUOTED_STRING ')' |
-	TOK_SINT opt_width '(' integral_number ')' |
+	TOK_SINT opt_width '(' TOK_INT ')' |
 	TOK_SINT opt_width '(' TOK_QUOTED_STRING ')' |
 	TOK_ID |
 	expr '.' TOK_ID |
-	expr '[' integral_number ']' |
+	expr '[' TOK_INT ']' |
 	expr '[' expr ']' |
 	TOK_MUX '(' expr ',' expr ',' expr ')' |
 	TOK_VALIDIF '(' expr ',' expr ')' |
-	primitive_op '(' opt_expr_list ',' opt_int_list ')' ;
+	primitive_op '(' expr_list int_varargs ')' ;
 
-opt_expr_list:
-	opt_expr_list ',' expr |
-	/* empty */;
+expr_list:
+	expr_list ',' expr |
+	expr ;
+
+int_varargs:
+	int_varargs ',' TOK_INT |
+	%empty ;
+
+mem_properties:
+	TOK_DATA_TYPE TOK_DEFINE type |
+	TOK_DEPTH TOK_DEFINE TOK_INT |
+	TOK_READ_LATENCY TOK_DEFINE TOK_INT |
+	TOK_WRITE_LATENCY TOK_DEFINE TOK_INT |
+	TOK_READ_UNDER_WRITE TOK_DEFINE mem_ruw |
+	TOK_READER TOK_DEFINE TOK_ID |
+	TOK_WRITER TOK_DEFINE TOK_ID |
+	TOK_READWRITER TOK_DEFINE TOK_ID ;
 
 mem_ruw:
 	TOK_OLD |
 	TOK_NEW |
 	TOK_UNDEFINED ;
-
-opt_int_list:
-	opt_int_list ',' integral_number |
-	/* empty */;
 
 primitive_op:
 	TOK_ADD |
@@ -243,15 +281,9 @@ primitive_op:
 	TOK_DECP |
 	TOK_SETP ;
 
-opt_reg_width_spec:
-	'(' TOK_WITH ':' '{' TOK_RESET TOK_DEFINE '(' expr ',' expr ')' '}' ')' |
-	/* empty */;
-
-integral_number:
-	TOK_CONSTVAL { $$ = $1; } |
-	TOK_BASED_CONSTVAL { $$ = $1; } |
-	TOK_DECIMAL_CONSTVAL { $$ = $1; } |
-	TOK_NEG_DECIMAL_CONSTVAL { $$ = $1; };
+opt_reg_with_spec:
+	TOK_WITH ':' '(' TOK_RESET TOK_DEFINE '(' expr ',' expr ')' ')' |
+	%empty ;
 
 %%
 

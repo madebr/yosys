@@ -4,3 +4,4 @@ firrtl documentation bugs:
 - is the modulo/remainder function called `rem` or `mod`?
 7.5 says `rem`, 14.2 says `mod`
 - primop specification misses `incp`, `decp` and `setp`.
+- 14.2 register specification: has too many braces and contins curly braces

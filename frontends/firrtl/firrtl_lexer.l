@@ -200,29 +200,24 @@ using namespace FIRRTL_FRONTEND;
 	/* Ignore whitespace */
 }
 
-"b""-"?[01_]+ {
+b-?[01_]+ {
 	yylval->string = new std::string(yytext);
-	return TOK_BASED_CONSTVAL;
+	return TOK_INT;
 }
 
-"o""-"?[0-7_]+ {
+o-?[0-7_]+ {
 	yylval->string = new std::string(yytext);
-	return TOK_BASED_CONSTVAL;
+	return TOK_INT;
 }
 
-"x""-"?[0-9A-F_]+ {
+x-?[0-9A-Fa-f_]+ {
 	yylval->string = new std::string(yytext);
-	return TOK_BASED_CONSTVAL;
+	return TOK_INT;
 }
 
-"-"[0-9]+ {
+-?[0-9_]+ {
 	yylval->string = new std::string(yytext);
-	return TOK_NEG_DECIMAL_CONSTVAL;
-}
-
-[0-9]+ {
-	yylval->string = new std::string(yytext);
-	return TOK_DECIMAL_CONSTVAL;
+	return TOK_INT;
 }
 
 "circuit" {
@@ -254,6 +249,10 @@ using namespace FIRRTL_FRONTEND;
 "output" { return TOK_OUTPUT; }
 
 "mem" { return TOK_MEM; }
+"depth" { return TOK_DEPTH; }
+"reader" { return TOK_READER; }
+"writer" { return TOK_WRITER; }
+"readwriter" { return TOK_READWRITER; }
 "data-type" { return TOK_DATA_TYPE; }
 "read-latency" { return TOK_READ_LATENCY; }
 "write-latency" { return TOK_WRITE_LATENCY; }
@@ -269,6 +268,8 @@ using namespace FIRRTL_FRONTEND;
 "wire" { return TOK_WIRE; }
 "is" { return TOK_IS; }
 "invalid" { return TOK_INVALID; }
+
+"attach" { return TOK_ATTACH; }
 
 "reg" { return TOK_REG; }
 "with" { return TOK_WITH; }
