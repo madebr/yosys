@@ -1,5 +1,6 @@
 circuit MyTop :
     module MyModule :
+        input a: UInt
         wire clk:Clock
         wire condition:UInt<1>
         wire a:UInt

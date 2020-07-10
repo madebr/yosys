@@ -79,6 +79,7 @@ YOSYS_NAMESPACE_END
 %token TOK_INDENT TOK_DEDENT
 %token TOK_CIRCUIT TOK_MODULE TOK_EXTMODULE TOK_INPUT TOK_OUTPUT
 %token TOK_UINT TOK_SINT TOK_FIXED TOK_CLOCK TOK_ANALOG
+%token TOK_SHIFTLEFT TOK_SHIFTRIGHT
 %token TOK_FLIP
 %token TOK_CONNECT TOK_PARTIAL TOK_DEFINE
 %token TOK_WHEN TOK_ELSE TOK_SKIP
@@ -176,7 +177,7 @@ port_dir:
 type:
 	TOK_UINT opt_width |
 	TOK_SINT opt_width |
-	TOK_FIXED fixed_width_bp |
+	TOK_FIXED opt_width opt_binary_point |
 	TOK_CLOCK |
 	TOK_ANALOG opt_width |
 	'{' fields '}' |
@@ -193,20 +194,12 @@ opt_flip:
 	TOK_FLIP |
 	%empty ;
 
-width:
-	'<' TOK_INT '>' ;
-
-binary_point:
-	'<' '<' TOK_INT '>' '>' ;
-
-opt_width:
-	width |
+opt_binary_point:
+	TOK_SHIFTLEFT TOK_INT TOK_SHIFTRIGHT |
 	%empty ;
 
-fixed_width_bp:
-	width |
-	binary_point |
-	width binary_point |
+opt_width:
+	'<' TOK_INT '>' |
 	%empty ;
 
 /* Better name for stmts? */
@@ -227,11 +220,14 @@ stmt:
 	expr TOK_PARTIAL expr opt_info_attr |
 	expr TOK_IS TOK_INVALID opt_info_attr |
 	TOK_ATTACH '(' expr_varargs ')' opt_info_attr |
-	TOK_WHEN expr ':' opt_info_attr cond_body opt_else |
+	stmt_when |
 	TOK_STOP '(' expr ',' expr ',' TOK_INT ')' opt_info_attr |
 	TOK_PRINTF '(' expr ',' expr ',' TOK_QUOTED_STRING opt_expr_varargs_comma ')' opt_info_attr |
 	TOK_SKIP opt_info_attr ;
 	/* TODO */
+
+stmt_when:
+	TOK_WHEN expr ':' opt_info_attr cond_body opt_else ;
 
 cond_body: /* use midrules for context? Or do this at postprocessing? */
 	TOK_INDENT stmts TOK_DEDENT |
@@ -239,6 +235,7 @@ cond_body: /* use midrules for context? Or do this at postprocessing? */
 
 opt_else:
 	TOK_ELSE ':' cond_body |
+	TOK_ELSE stmt_when |
 	%empty ;
 
 expr_varargs:

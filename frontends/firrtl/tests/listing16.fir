@@ -1,3 +1,3 @@
 circuit MyTop :
     module MyModule :
-        output myport: {a: UInt, flib b: {c: UInt, flip d: UInt}}
+        output myport: {a: UInt, flip b: {c: UInt, flip d: UInt}}

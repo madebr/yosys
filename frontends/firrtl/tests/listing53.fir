@@ -1,5 +1,6 @@
 circuit MyTop :
     module MyModule :
+        input a: UInt
         mem mymem :
             data-type => {real:SInt <16>, imag:SInt<16>}
             depth => 256

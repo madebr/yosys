@@ -212,6 +212,7 @@ using namespace FIRRTL_FRONTEND;
 }
 
 b-?[01_]+ {
+	// Combine these integer parsers for better warning messages?
 	yylval->string = new std::string(yytext);
 	return TOK_INT;
 }
@@ -226,7 +227,7 @@ x-?[0-9A-Fa-f_]+ {
 	return TOK_INT;
 }
 
--?[0-9_]+ {
+"-"?[0-9_]+ {
 	yylval->string = new std::string(yytext);
 	return TOK_INT;
 }
@@ -252,6 +253,10 @@ x-?[0-9A-Fa-f_]+ {
 
 "flip" { return TOK_FLIP; }
 
+"<<" { return TOK_SHIFTLEFT; }
+">>" { return TOK_SHIFTRIGHT; }
+
+"<=" { return TOK_CONNECT; }
 "<=" { return TOK_CONNECT; }
 "<-" { return TOK_PARTIAL; }
 "=>" { return TOK_DEFINE; }
