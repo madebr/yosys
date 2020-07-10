@@ -62,6 +62,8 @@ namespace FIRRTL_FRONTEND
 		FRONTEND_FIRRTL_YYLTYPE old_location;
 
 	};
+
+	const char *token_name(int);
 }
 
 YOSYS_NAMESPACE_END

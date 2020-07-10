@@ -1,0 +1,6 @@
+firrtl documentation bugs:
+
+- asFixed not in specification of primop (14.2)
+- is the modulo/remainder function called `rem` or `mod`?
+7.5 says `rem`, 14.2 says `mod`
+- primop specification misses `incp`, `decp` and `setp`.

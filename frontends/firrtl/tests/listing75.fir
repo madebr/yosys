@@ -1,0 +1,9 @@
+circuit MyTop :
+    module MyModule :
+        input in: UInt
+        input default: UInt[2][3]
+        input n: UInt<1>
+        input m: UInt<1>
+        output out: UInt[2][2]
+        out <= default
+        out[n][m] <= in

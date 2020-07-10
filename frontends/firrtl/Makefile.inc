@@ -15,7 +15,8 @@ frontends/firrtl/firrtl_lexer.cc: frontends/firrtl/firrtl_lexer.l
 	$(Q) mkdir -p $(dir $@)
 	$(P) $(FLEX) -o frontends/firrtl/firrtl_lexer.cc --header-file=frontends/firrtl/firrtl_lexer.h $<
 
-frontends/firrtl/firrtl_lexer.h: frontends/firrtl/firrtl_lexer.l
+frontends/firrtl/firrtl_parser.tab.cc: frontends/firrtl/firrtl_lexer.h
+frontends/firrtl/firrtl_lexer.h: frontends/firrtl/firrtl_lexer.cc
 
 frontends/firrtl/firrtl_parser.tab.o: CXXFLAGS += -DYYMAXDEPTH=10000000
 

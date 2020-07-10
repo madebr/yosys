@@ -24,7 +24,7 @@
 %code {
 #include "kernel/log.h"
 
-#include "firrtl_lexer.h"
+#include "frontends/firrtl/firrtl_lexer.h"
 #include <cstring>
 
 USING_YOSYS_NAMESPACE
@@ -65,19 +65,39 @@ YOSYS_NAMESPACE_END
 	std::string *string;
 }
 
+%token TOK_INDENT TOK_DEDENT TOK_NEWLINE
+%token TOK_CIRCUIT TOK_MODULE TOK_EXTMODULE TOK_INPUT TOK_OUTPUT
+%token TOK_UINT TOK_SINT TOK_FIXED TOK_CLOCK TOK_ANALOG
+%token TOK_FLIP
+%token TOK_CONNECT TOK_PARTIAL TOK_DEFINE
+%token TOK_WHEN TOK_ELSE TOK_SKIP
+%token TOK_MUX TOK_VALIDIF
+%token TOK_NODE
+%token TOK_WIRE TOK_IS TOK_INVALID
+%token TOK_REG TOK_WITH TOK_RESET
+
+%token TOK_MEM
+/* Are the tokens for settings of memory needed? */
+%token TOK_DATA_TYPE TOK_READ_LATENCY TOK_WRITE_LATENCY TOK_READ_UNDER_WRITE TOK_READER TOK_WRITER TOK_READWRITER
+%token TOK_UNDEFINED TOK_OLD TOK_NEW
+%token TOK_INST TOK_OF
+
+/* Are the tokens for these functions needed? */
+%token TOK_STOP TOK_PRINTF
+
+%token TOK_ADD TOK_SUB TOK_MUL TOK_DIV TOK_REM
+%token TOK_LT TOK_LEQ TOK_EQ TOK_NEQ TOK_GT TOK_GEQ
+%token TOK_PAD TOK_ASUINT TOK_ASSINT TOK_ASFIXED TOK_ASCLOCK
+%token TOK_SHL TOK_SHR TOK_DSHL TOK_DSHR TOK_CVT TOK_NEG TOK_NOT
+%token TOK_AND TOK_OR TOK_XOR TOK_ANDR TOK_ORR TOK_XORR
+%token TOK_CAT TOK_BITS TOK_HEAD TOK_TAIL
+%token TOK_INCP TOK_DECP TOK_SETP
+
+
 %token <string> TOK_CONSTVAL TOK_BASED_CONSTVAL TOK_NEG_DECIMAL_CONSTVAL TOK_DECIMAL_CONSTVAL
 %token <string> TOK_ID TOK_QUOTED_STRING
-%token TOK_CIRCUIT TOK_MODULE TOK_EXTMODULE TOK_INPUT TOK_OUTPUT TOK_UINT TOK_SINT TOK_CLOCK 
-%token TOK_WIRE TOK_REG TOK_MEM TOK_INST TOK_NODE TOK_DATA_TYPE TOK_DEPTH TOK_READ_LATENCY
-%token TOK_MUX TOK_RESET TOK_VALIDIF TOK_WITH TOK_ADD TOK_SUB TOK_MUL TOK_DIV TOK_MOD TOK_LT
-%token TOK_LEQ TOK_GT TOK_GEQ TOK_EQ TOK_NEQ TOK_PAD TOK_ASUINT TOK_ASSINT TOK_ASFIXED TOK_ASCLOCK
-%token TOK_SHL TOK_SHR TOK_DSHL TOK_DSHR TOK_CVT TOK_NEG TOK_NOT TOK_AND TOK_OR TOK_XOR TOK_ANDR TOK_ORR
-%token TOK_XORR TOK_CAT TOK_BITS TOK_HEAD TOK_TAIL
-%token TOK_WRITE_LATENCY TOK_READ_UNDER_WRITE TOK_READER TOK_WRITER TOK_READWRITER
-%token TOK_INDENT TOK_DEDENT TOK_NEWLINE
-%token TOK_WHEN TOK_ELSE TOK_SKIP
 
-%nterm <string> identifier integral_number
+%nterm <string> integral_number
 
 %destructor { delete $$; } <string>
 
@@ -89,6 +109,7 @@ YOSYS_NAMESPACE_END
 %define api.push-pull both
 
 %define parse.error verbose
+%verbose
 %define parse.lac full
 %param { Yosys::FIRRTL_FRONTEND::firrtl_state_t *state }
 
@@ -98,35 +119,26 @@ YOSYS_NAMESPACE_END
 %%
 
 circuit:
-	TOK_CIRCUIT identifier ':' opt_info_attr TOK_INDENT opt_module_list TOK_DEDENT;
-
-identifier:
-	TOK_ID { $$ = $1; };
+	TOK_CIRCUIT TOK_ID ':' opt_info_attr TOK_INDENT module_list TOK_DEDENT;
 
 opt_info_attr:
 	'@' '[' TOK_QUOTED_STRING ']' |
 	/* empty */;
 
-opt_module_list:
-	opt_module_list opt_comma module |
-	module |
+module_list:
+	module_list module |
 	/* empty */;
 
 module:
-	TOK_MODULE identifier ':' opt_info_attr TOK_INDENT opt_port_list stmt TOK_DEDENT |
-	TOK_EXTMODULE identifier ':' opt_info_attr opt_port_list;
+	TOK_MODULE TOK_ID ':' opt_info_attr TOK_INDENT port_list stmt TOK_DEDENT |
+	TOK_EXTMODULE TOK_ID ':' opt_info_attr '(' port_list ')';
 
-opt_port_list:
-	opt_port_list opt_comma port |	
-	port |
-	/* empty */;
-
-opt_comma:
-	',' |
+port_list:
+	port_list port |
 	/* empty */;
 
 port:
-	port_dir identifier ':' type opt_info_attr;
+	port_dir TOK_ID ':' type opt_info_attr;
 
 port_dir:
 	TOK_INPUT |
@@ -135,16 +147,33 @@ port_dir:
 type:
 	TOK_UINT opt_width |
 	TOK_SINT opt_width |
-	TOK_CLOCK;
+	TOK_FIXED opt_width opt_fixed_width |
+	TOK_CLOCK |
+	TOK_ANALOG opt_width |
+	'{' fields '}' |
+	type '[' ']'; //FIXME: type unfinished! (argument is int
 	/* TODO */
+
+fields:
+	fields field |
+	field ;
+
+field:
+	opt_flip TOK_ID ':' type;
+
+opt_flip:
+	TOK_FLIP |
+	/* empty */;
 
 opt_width:
 	'<' integral_number '>' |
 	/* empty */;
 
+opt_fixed_width:
+	'<' '<' integral_number '>' '>' |
+	/* empty */;
+
 stmt:
-	opt_info_attr |
-	stmt opt_info_attr |
 	TOK_WIRE TOK_ID ':' type opt_info_attr |
 	TOK_REG TOK_ID ':' type expr opt_reg_width_spec opt_info_attr |
 	/* empty */;
@@ -159,17 +188,21 @@ expr:
 	expr '.' TOK_ID |
 	expr '[' integral_number ']' |
 	expr '[' expr ']' |
-	TOK_MUX '(' expr opt_comma expr opt_comma expr ')' |
-	TOK_VALIDIF '(' expr opt_comma expr ')' |
-	primitive_op '(' opt_expr_list opt_comma opt_int_list ')' |
-	;
+	TOK_MUX '(' expr ',' expr ',' expr ')' |
+	TOK_VALIDIF '(' expr ',' expr ')' |
+	primitive_op '(' opt_expr_list ',' opt_int_list ')' ;
 
 opt_expr_list:
-	opt_expr_list opt_comma expr |
+	opt_expr_list ',' expr |
 	/* empty */;
 
+mem_ruw:
+	TOK_OLD |
+	TOK_NEW |
+	TOK_UNDEFINED ;
+
 opt_int_list:
-	opt_int_list opt_comma integral_number |
+	opt_int_list ',' integral_number |
 	/* empty */;
 
 primitive_op:
@@ -177,7 +210,7 @@ primitive_op:
 	TOK_SUB |
 	TOK_MUL |
 	TOK_DIV |
-	TOK_MOD |
+	TOK_REM |
 	TOK_LT |
 	TOK_LEQ |
 	TOK_GT |
@@ -206,10 +239,12 @@ primitive_op:
 	TOK_BITS |
 	TOK_HEAD |
 	TOK_TAIL |
-	TOK_BITS ;
+	TOK_INCP |
+	TOK_DECP |
+	TOK_SETP ;
 
 opt_reg_width_spec:
-	'(' TOK_WITH ':' '{' TOK_RESET '=' '>' '(' expr opt_comma expr ')' '}' ')' |
+	'(' TOK_WITH ':' '{' TOK_RESET TOK_DEFINE '(' expr ',' expr ')' '}' ')' |
 	/* empty */;
 
 integral_number:
@@ -217,3 +252,17 @@ integral_number:
 	TOK_BASED_CONSTVAL { $$ = $1; } |
 	TOK_DECIMAL_CONSTVAL { $$ = $1; } |
 	TOK_NEG_DECIMAL_CONSTVAL { $$ = $1; };
+
+%%
+
+YOSYS_NAMESPACE_BEGIN
+
+namespace FIRRTL_FRONTEND {
+
+const char *token_name(int token) {
+	return yytname[yytranslate[token]];
+}
+
+}
+
+YOSYS_NAMESPACE_END

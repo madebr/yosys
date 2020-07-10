@@ -78,14 +78,11 @@ struct FirrtlFrontend : public Frontend {
 			//	log(" %d", state.indent_stack[i]);
 			//}
 			//log("} ");
-			if (token == TOK_QUOTED_STRING) {
-				std::cout << "Quoted string: '" << *frontend_firrtl_yyget_lval(lexer)->string << "'\n";
-			}
-			log("got token %d\n", token);
+			std::cout << "got token " << token_name(token) << " (" << token << ")";
 			if (value.string) {
-				std::cout << "v: " << *value.string << "\n";
+				std::cout << ", v: " << *value.string << "\n";
 			} else {
-				std::cout << "no value\n";
+				std::cout << ", no value\n";
 			}
 			if (token == 0) {
 				break;

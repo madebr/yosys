@@ -156,8 +156,13 @@ using namespace FIRRTL_FRONTEND;
 
 
 \n[ ]*.? {
-	if (yyleng != 1) {
+	if ((yyleng == 1) || (yytext[yyleng-1] == ' ')) {
+		/* empty line or whitespace only line */
+	} else {
 		unput(yytext[yyleng-1]);
+		if (yytext[yyleng-1] == '\t') {
+			frontend_firrtl_yyerror(yylloc, yyextra, "tab indentation disallowed");
+		}
 		if (yytext[yyleng-1] != '\n') {
 			const int new_indentation_count = yyleng - 2;
 			log_assert(new_indentation_count >= 0);
@@ -228,39 +233,70 @@ using namespace FIRRTL_FRONTEND;
 }
 "module" { return TOK_MODULE; }
 "extmodule" { return TOK_EXTMODULE; }
+
+"when" { return TOK_WHEN; }
+"else" { return TOK_ELSE; }
+"skip" { return TOK_SKIP; }
+
+"UInt" { return TOK_UINT; }
+"SInt" { return TOK_SINT; }
+"Fixed" { return TOK_FIXED; }
+"Clock" { return TOK_CLOCK; }
+"Analog" { return TOK_ANALOG; }
+
+"flip" { return TOK_FLIP; }
+
+"<=" { return TOK_CONNECT; }
+"<-" { return TOK_PARTIAL; }
+"=>" { return TOK_DEFINE; }
+
 "input" { return TOK_INPUT; }
 "output" { return TOK_OUTPUT; }
-"wire" { return TOK_WIRE; }
-"reg" { return TOK_REG; }
+
 "mem" { return TOK_MEM; }
-"inst" { return TOK_INST; }
 "data-type" { return TOK_DATA_TYPE; }
-"depth" { return TOK_DEPTH; }
 "read-latency" { return TOK_READ_LATENCY; }
 "write-latency" { return TOK_WRITE_LATENCY; }
 "read-under-write" { return TOK_READ_UNDER_WRITE; }
-"node" { return TOK_NODE; }
+
+"inst" { return TOK_INST; }
+"of" { return TOK_OF; }
+
 "mux" { return TOK_MUX; }
 "validif" { return TOK_VALIDIF; }
+"node" { return TOK_NODE; }
+
+"wire" { return TOK_WIRE; }
+"is" { return TOK_IS; }
+"invalid" { return TOK_INVALID; }
+
+"reg" { return TOK_REG; }
 "with" { return TOK_WITH; }
 "reset" { return TOK_RESET; }
-"UInt" { return TOK_UINT; }
-"SInt" { return TOK_SINT; }
-"Clock" { return TOK_CLOCK; }
+
+
+"stop" { return TOK_STOP; }
+"printf" { return TOK_PRINTF; }
+
 "add" { return TOK_ADD; }
 "sub" { return TOK_SUB; }
 "mul" { return TOK_MUL; }
 "div" { return TOK_DIV; }
-"mod" { return TOK_MOD; }
+"rem" { return TOK_REM; }
+
 "lt" { return TOK_LT; }
 "leq" { return TOK_LEQ; }
-"gt" { return TOK_GT; }
-"geq" { return TOK_GEQ; }
 "eq" { return TOK_EQ; }
 "neq" { return TOK_NEQ; }
+"gt" { return TOK_GT; }
+"geq" { return TOK_GEQ; }
+
 "pad" { return TOK_PAD; }
 "asUInt" { return TOK_ASUINT; }
 "asSInt" { return TOK_ASSINT; }
+"asFixed" { return TOK_ASFIXED; }
+"asClock" { return TOK_ASCLOCK; }
+
 "shl" { return TOK_SHL; }
 "shr" { return TOK_SHR; }
 "dshl" { return TOK_DSHL; }
@@ -268,20 +304,20 @@ using namespace FIRRTL_FRONTEND;
 "cvt" { return TOK_CVT; }
 "neg" { return TOK_NEG; }
 "not" { return TOK_NOT; }
-"andr" { return TOK_ANDR; }
+
 "and" { return TOK_AND; }
-"orr" { return TOK_ORR; }
 "or" { return TOK_OR; }
-"xorr" { return TOK_XORR; }
 "xor" { return TOK_XOR; }
+"andr" { return TOK_ANDR; }
+"orr" { return TOK_ORR; }
+"xorr" { return TOK_XORR; }
+
 "cat" { return TOK_CAT; }
 "bits" { return TOK_BITS; }
 "head" { return TOK_HEAD; }
 "tail" { return TOK_TAIL; }
 
-"when" { return TOK_WHEN; }
-"else" { return TOK_ELSE; }
-"skip" { return TOK_SKIP; }
+
 
 [a-zA-Z_][a-zA-Z0-9_$]* {
 	yylval->string = new std::string(yytext);
