@@ -1,0 +1,2 @@
+circuit MyCircuit:
+    skip

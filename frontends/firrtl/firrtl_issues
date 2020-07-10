@@ -1,7 +1,49 @@
 firrtl documentation bugs:
 
+- is a modules with ports only, valid syntax?
+e.g.
+```
+circuit MyCircuit:
+    module MyModule:
+        input i: UInt
+        output o: UInt
+```
+- is a modules with no ports, valid syntax?
+e.g.
+```
+circuit MyCircuit:
+    module MyModule:
+    	wire a: UInt
+    	a <= UInt(44)
+```
+- is an empty module, valid syntax?
+e.g.
+```
+circuit MyCircuit:
+    module MyModule:
+        skip
+```
 - asFixed not in specification of primop (14.2)
 - is the modulo/remainder function called `rem` or `mod`?
 7.5 says `rem`, 14.2 says `mod`
 - primop specification misses `incp`, `decp` and `setp`.
 - 14.2 register specification: has too many braces and contins curly braces
+
+
+
+
+
+
+
+
+
+
+
+
+Weird error:
+```
+circuit MyCircuit:
+    module MyModule:
+        input a1: UInt
+        output b1: UInt
+```

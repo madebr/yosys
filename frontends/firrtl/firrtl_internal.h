@@ -20,7 +20,6 @@
 #ifndef FIRRTL_INTERNAL_H
 #define FIRRTL_INTERNAL_H
 
-#include "frontends/firrtl/firrtl_parser.tab.hh"
 
 // definition by flex
 //   int frontend_firrtl_yylex_init(firrlt_scanner_t *lexer);
@@ -30,9 +29,13 @@
 //   extern int frontend_firrtl_yylex(FRONTEND_FIRRTL_YYSTYPE *yylval_param, FRONTEND_FIRRTL_YYLTYPE *yylloc_param, firrlt_scanner_t lexer);
 //
 
+#include "kernel/yosys.h"
+
+#include "frontends/firrtl/firrtl_frontend.h"
+#include "frontends/firrtl/firrtl_parser.tab.hh"
 
 // functions required by bison
-void frontend_firrtl_yyerror(FRONTEND_FIRRTL_YYLTYPE *, Yosys::FIRRTL_FRONTEND::firrtl_state_t *, char const *fmt, ...);
+
 
 YOSYS_NAMESPACE_BEGIN
 
@@ -47,6 +50,9 @@ namespace FIRRTL_FRONTEND
 
 		// lexer string literal buffer
 		std::string lex_buf_string_literal;
+
+		// lexer state
+		firrlt_scanner_t lexer;
 
 		// lexer number of dedent tokens left to emit
 		unsigned nb_dedent_tokens{};
@@ -63,12 +69,12 @@ namespace FIRRTL_FRONTEND
 
 	};
 
-	const char *token_name(int);
+	// const char *token_name(int);
 }
 
 YOSYS_NAMESPACE_END
 
-
+void frontend_firrtl_yyerror(FRONTEND_FIRRTL_YYLTYPE *, firrlt_scanner_t, char const *fmt, ...);
 
 
 //extern int frontend_firrtl_yydebug;

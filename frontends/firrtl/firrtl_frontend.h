@@ -21,37 +21,13 @@
 #define FIRRTL_FRONTEND_H
 
 #include "kernel/yosys.h"
-#include "frontends/ast/ast.h"
 
-#include <iosfwd>
-#include <string>
-#include <vector>
+typedef void *firrlt_scanner_t;
 
 YOSYS_NAMESPACE_BEGIN
 
-namespace FIRRTL_FRONTEND
-{
-	struct firrtl_state_t;
-//	struct firrtl_state_t {
-//		// lexer input stream
-//		std::istream *lexin = nullptr;
-//
-//		// filename of current file
-//		std::string current_filename;
-//
-//		// lexer string literal buffer
-//		std::string lex_buf_string_literal;
-//
-//		// lexer number of dedent tokens left to emit
-//		unsigned nb_dedent_tokens{};
-//
-//		// lexer need to emit an indent token?
-//		bool indent_token;
-//
-//		// lexer indentation stack
-//		std::vector<int> indent_stack;
-//
-//	};
+namespace FIRRTL_FRONTEND {
+struct firrtl_state_t;
 }
 
 YOSYS_NAMESPACE_END

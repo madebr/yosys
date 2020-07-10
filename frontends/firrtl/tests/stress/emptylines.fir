@@ -1,5 +1,5 @@
 circuit MyCircuit:
     module MyModule:
-        input a1: UInt
+        input a: UInt
 
-        input b1: UInt
+        input b: UInt

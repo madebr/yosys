@@ -18,22 +18,31 @@
  */
 
 %top {
+/* Declaration of state type */
+#include "frontends/firrtl/firrtl_frontend.h"
+
+/* Definition of value and location type */
 #include "frontends/firrtl/firrtl_parser.tab.hh"
 
 #define YYSTYPE FRONTEND_FIRRTL_YYSTYPE
 #define YYLTYPE FRONTEND_FIRRTL_YYLTYPE
 
+#ifdef yyscan_t
+#undef yyscan_t
+#endif
 #define yyscan_t firrlt_scanner_t
 }
 
 %{
+/* Definition of state type */
+#include "frontends/firrtl/firrtl_internal.h"
 
 #ifdef __clang__
 // bison generates code using the 'register' storage class specifier
 #pragma clang diagnostic ignored "-Wdeprecated-register"
 #endif
 
-#include "frontends/firrtl/firrtl_internal.h"
+#include "frontends/firrtl/firrtl_parser.tab.hh"
 #include "kernel/log.h"
 
 USING_YOSYS_NAMESPACE
@@ -143,7 +152,7 @@ using namespace FIRRTL_FRONTEND;
 	yylval->string = new std::string(yyextra->lex_buf_string_literal);
 	return TOK_QUOTED_STRING;
 }
-\\[nt\"]        { yyextra->lex_buf_string_literal += yytext; }
+\\[nt\'"]        { yyextra->lex_buf_string_literal += yytext; }
 [^"\\\n]+          { yyextra->lex_buf_string_literal += yytext; }
 .               { frontend_firrtl_yyerror(yylloc, yyextra, "Unsupported character"); }
 <<EOF>> {
@@ -158,11 +167,13 @@ using namespace FIRRTL_FRONTEND;
 \n[ ]*.? {
 	if ((yyleng == 1) || (yytext[yyleng-1] == ' ')) {
 		/* empty line or whitespace only line */
+	} else if (yytext[yyleng-1] == ';') {
+		unput(yytext[yyleng-1]);
+	} else if (yytext[yyleng-1] == '\t') {
+		frontend_firrtl_yyerror(yylloc, yyextra, "tab indentation disallowed");
 	} else {
 		unput(yytext[yyleng-1]);
-		if (yytext[yyleng-1] == '\t') {
-			frontend_firrtl_yyerror(yylloc, yyextra, "tab indentation disallowed");
-		}
+
 		if (yytext[yyleng-1] != '\n') {
 			const int new_indentation_count = yyleng - 2;
 			log_assert(new_indentation_count >= 0);
@@ -257,6 +268,9 @@ x-?[0-9A-Fa-f_]+ {
 "read-latency" { return TOK_READ_LATENCY; }
 "write-latency" { return TOK_WRITE_LATENCY; }
 "read-under-write" { return TOK_READ_UNDER_WRITE; }
+"old" { return TOK_OLD; }
+"new" { return TOK_NEW; }
+"undefined" { return TOK_UNDEFINED; }
 
 "inst" { return TOK_INST; }
 "of" { return TOK_OF; }

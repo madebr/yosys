@@ -18,8 +18,8 @@
  */
 
 #include "frontends/firrtl/firrtl_frontend.h"
-
 #include "frontends/firrtl/firrtl_lexer.h"
+
 #include "frontends/firrtl/firrtl_internal.h"
 
 #include "kernel/yosys.h"
@@ -27,6 +27,42 @@
 
 YOSYS_NAMESPACE_BEGIN
 using namespace FIRRTL_FRONTEND;
+
+void print_tokens(const char *filename) {
+		std::ifstream ifs(filename);
+		firrlt_scanner_t lexer;
+		firrtl_state_t state;
+		state.lexin = &ifs;
+		state.current_filename = filename;
+
+		frontend_firrtl_yylex_init_extra(&state, &lexer);
+
+		while (true) {
+			FRONTEND_FIRRTL_YYSTYPE value;
+			value.string = nullptr;
+			FRONTEND_FIRRTL_YYLTYPE location;
+            int token = frontend_firrtl_yylex(&value, &location, lexer);
+			//log("nb_indent: %d {", state.indent_stack.size());
+			//for(unsigned i=0; i < state.indent_stack.size(); ++i) {
+			//	log(" %d", state.indent_stack[i]);
+			//}
+			//log("} ");
+			std::cout << "got token " << token_name(token) << " (" << token << ")";
+			if (value.string) {
+				std::cout << ", v: '" << *value.string << "'\n";
+			} else {
+				std::cout << ", no value\n";
+			}
+			if (token == 0) {
+				break;
+			}
+		}
+
+		frontend_firrtl_yyset_extra(&state, lexer);
+
+		frontend_firrtl_yylex_destroy(lexer);
+}
+
 
 struct FirrtlFrontend : public Frontend {
 	FirrtlFrontend() : Frontend("firrtl", "read modules from FIRRTL file") { }
@@ -60,6 +96,9 @@ struct FirrtlFrontend : public Frontend {
 
 		log_header(design, "Executing FIRRTL frontend: %s\n", filename.c_str());
 
+
+		print_tokens(filename.c_str());
+
 		firrlt_scanner_t lexer;
 
 		firrtl_state_t state;
@@ -68,26 +107,7 @@ struct FirrtlFrontend : public Frontend {
 
 		frontend_firrtl_yylex_init_extra(&state, &lexer);
 
-		while (true) {
-			FRONTEND_FIRRTL_YYSTYPE value;
-			value.string = nullptr;
-			FRONTEND_FIRRTL_YYLTYPE location;
-            int token = frontend_firrtl_yylex(&value, &location, lexer);
-			//log("nb_indent: %d {", state.indent_stack.size());
-			//for(unsigned i=0; i < state.indent_stack.size(); ++i) {
-			//	log(" %d", state.indent_stack[i]);
-			//}
-			//log("} ");
-			std::cout << "got token " << token_name(token) << " (" << token << ")";
-			if (value.string) {
-				std::cout << ", v: " << *value.string << "\n";
-			} else {
-				std::cout << ", no value\n";
-			}
-			if (token == 0) {
-				break;
-			}
-		}
+		frontend_firrtl_yyparse(lexer);
 
 		frontend_firrtl_yyset_extra(&state, lexer);
 
@@ -102,7 +122,7 @@ struct FirrtlFrontend : public Frontend {
 YOSYS_NAMESPACE_END
 
 // the yyerror function used by bison to report parser errors
-void frontend_firrtl_yyerror(FRONTEND_FIRRTL_YYLTYPE *location, Yosys::FIRRTL_FRONTEND::firrtl_state_t *state, char const *fmt, ...)
+void frontend_firrtl_yyerror(FRONTEND_FIRRTL_YYLTYPE *location, firrlt_scanner_t lexer, char const *fmt, ...)
 {
 	va_list ap;
 	char buffer[1024];
@@ -111,6 +131,7 @@ void frontend_firrtl_yyerror(FRONTEND_FIRRTL_YYLTYPE *location, Yosys::FIRRTL_FR
 	p += vsnprintf(p, buffer + sizeof(buffer) - p, fmt, ap);
 	va_end(ap);
 	p += snprintf(p, buffer + sizeof(buffer) - p, "\n");
+	YOSYS_NAMESPACE::FIRRTL_FRONTEND::firrtl_state_t *state = frontend_firrtl_yyget_extra(lexer);
 	YOSYS_NAMESPACE_PREFIX log_file_error(state->current_filename,
 			location->first_line, "%s", buffer);
 	exit(1);

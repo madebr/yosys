@@ -17,14 +17,15 @@
  *
  */
 
-%code top {
-#include "firrtl_internal.h"
-}
+//%code top {
+//#include "firrtl_internal.h"
+//}
 
 %code {
-#include "kernel/log.h"
 
+#include "frontends/firrtl/firrtl_internal.h"
 #include "frontends/firrtl/firrtl_lexer.h"
+
 #include <cstring>
 
 USING_YOSYS_NAMESPACE
@@ -53,19 +54,29 @@ YOSYS_NAMESPACE_END
 
 
 %code requires {
-
+/* Dependencies of the argument(s) of yyparse */
 #include "frontends/firrtl/firrtl_frontend.h"
 
 /* Dependencies of the value type */
-
 #include <string>
+}
+
+%code provides {
+YOSYS_NAMESPACE_BEGIN
+
+namespace FIRRTL_FRONTEND
+{
+	const char *token_name(int);
+}
+
+YOSYS_NAMESPACE_END
 }
 
 %union {
 	std::string *string;
 }
 
-%token TOK_INDENT TOK_DEDENT TOK_NEWLINE
+%token TOK_INDENT TOK_DEDENT
 %token TOK_CIRCUIT TOK_MODULE TOK_EXTMODULE TOK_INPUT TOK_OUTPUT
 %token TOK_UINT TOK_SINT TOK_FIXED TOK_CLOCK TOK_ANALOG
 %token TOK_FLIP
@@ -104,79 +115,107 @@ YOSYS_NAMESPACE_END
 // operator precedence
 // TODO
 
+%no-lines
 %define api.prefix {frontend_firrtl_yy}
 %define api.pure full
-%define api.push-pull both
+%param { firrlt_scanner_t lexer }
 
 %define parse.error verbose
 %verbose
 %define parse.lac full
-%param { Yosys::FIRRTL_FRONTEND::firrtl_state_t *state }
+//%param { Yosys::FIRRTL_FRONTEND::firrtl_state_t *state }
 
 %debug
 %locations
 
+// No conflicts allowed!
+//%expect 0
+
+%start circuit
+
 %%
 
 circuit:
-	TOK_CIRCUIT TOK_ID ':' opt_info_attr TOK_INDENT module_list TOK_DEDENT;
+	TOK_CIRCUIT TOK_ID ':' opt_info_attr TOK_INDENT module_list_opt TOK_DEDENT ;
 
 opt_info_attr:
 	'@' '[' TOK_QUOTED_STRING ']' |
 	%empty ;
 
+module_list_opt:
+	module_list |
+	TOK_SKIP ;
+
 module_list:
 	module_list module |
-	%empty ;
+	module ;
 
 module:
-	TOK_MODULE TOK_ID ':' opt_info_attr TOK_INDENT port_list stmts TOK_DEDENT |
-	TOK_EXTMODULE TOK_ID ':' opt_info_attr TOK_INDENT port_list TOK_DEDENT ;
+	TOK_MODULE TOK_ID ':' opt_info_attr TOK_INDENT module_body TOK_DEDENT |
+	TOK_EXTMODULE TOK_ID ':' opt_info_attr TOK_INDENT extmodule_body TOK_DEDENT ;
+
+module_body:
+	port_list stmts_opt |
+	TOK_SKIP ; // Is this ok? Does a module require ports?
+
+extmodule_body:
+	port_list |
+	TOK_SKIP ; // Is this ok? Does a extmodule require ports?
 
 port_list:
 	port_list port |
-	%empty ;
+	port ;
 
 port:
 	port_dir TOK_ID ':' type opt_info_attr;
 
 port_dir:
 	TOK_INPUT |
-	TOK_OUTPUT;
+	TOK_OUTPUT ;
 
 type:
 	TOK_UINT opt_width |
 	TOK_SINT opt_width |
-	TOK_FIXED opt_width opt_fixed_width |
+	TOK_FIXED fixed_width_bp |
 	TOK_CLOCK |
 	TOK_ANALOG opt_width |
 	'{' fields '}' |
-	type '[' ']'; //FIXME: type unfinished! (argument is int
-	/* TODO */
+	type '[' TOK_INT ']' ; //FIXME: type unfinished! (argument is int
 
 fields:
-	fields field |
+	fields ',' field |
 	field ;
 
 field:
-	opt_flip TOK_ID ':' type;
+	opt_flip TOK_ID ':' type ;
 
 opt_flip:
 	TOK_FLIP |
 	%empty ;
 
+width:
+	'<' TOK_INT '>' ;
+
+binary_point:
+	'<' '<' TOK_INT '>' '>' ;
+
 opt_width:
-	'<' TOK_INT '>' |
+	width |
 	%empty ;
 
-opt_fixed_width:
-	'<' '<' TOK_INT '>' '>' |
+fixed_width_bp:
+	width |
+	binary_point |
+	width binary_point |
 	%empty ;
 
 /* Better name for stmts? */
 stmts:
-	stmts stmt |
-	stmt ;
+	stmt stmts_opt ;
+
+stmts_opt:
+	stmts_opt stmt |
+	%empty ;
 
 stmt:
 	TOK_WIRE TOK_ID ':' type opt_info_attr |
@@ -187,24 +226,35 @@ stmt:
 	expr TOK_CONNECT expr opt_info_attr |
 	expr TOK_PARTIAL expr opt_info_attr |
 	expr TOK_IS TOK_INVALID opt_info_attr |
-	TOK_ATTACH '(' expr_list ')' opt_info_attr |
+	TOK_ATTACH '(' expr_varargs ')' opt_info_attr |
 	TOK_WHEN expr ':' opt_info_attr cond_body opt_else |
 	TOK_STOP '(' expr ',' expr ',' TOK_INT ')' opt_info_attr |
-	TOK_PRINTF '(' expr ',' expr ',' TOK_QUOTED_STRING expr_varargs ')' opt_info_attr |
+	TOK_PRINTF '(' expr ',' expr ',' TOK_QUOTED_STRING opt_expr_varargs_comma ')' opt_info_attr |
 	TOK_SKIP opt_info_attr ;
 	/* TODO */
 
 cond_body: /* use midrules for context? Or do this at postprocessing? */
-	TOK_INDENT stmt TOK_DEDENT |
-	stmts ;
+	TOK_INDENT stmts TOK_DEDENT |
+	stmt ;
 
 opt_else:
-	TOK_ELSE ':' TOK_INDENT stmt TOK_DEDENT |
-	TOK_ELSE ':' stmts |
+	TOK_ELSE ':' cond_body |
 	%empty ;
 
 expr_varargs:
 	expr_varargs ',' expr |
+	expr ;
+
+opt_expr_varargs_comma:
+	',' expr_varargs |
+	%empty ;
+
+int_varargs:
+	int_varargs ',' TOK_INT |
+	TOK_INT ;
+
+opt_int_varargs_comma:
+	',' int_varargs |
 	%empty ;
 
 expr:
@@ -218,17 +268,13 @@ expr:
 	expr '[' expr ']' |
 	TOK_MUX '(' expr ',' expr ',' expr ')' |
 	TOK_VALIDIF '(' expr ',' expr ')' |
-	primitive_op '(' expr_list int_varargs ')' ;
-
-expr_list:
-	expr_list ',' expr |
-	expr ;
-
-int_varargs:
-	int_varargs ',' TOK_INT |
-	%empty ;
+	primitive_op '(' expr_varargs opt_int_varargs_comma ')' ;
 
 mem_properties:
+	mem_properties mem_property |
+	mem_property ;
+
+mem_property:
 	TOK_DATA_TYPE TOK_DEFINE type |
 	TOK_DEPTH TOK_DEFINE TOK_INT |
 	TOK_READ_LATENCY TOK_DEFINE TOK_INT |
