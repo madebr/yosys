@@ -86,7 +86,6 @@ using namespace FIRRTL_FRONTEND;
 		yyextra->indent_stack.push_back(0); \
 		yyextra->old_location = {1, 0, 1, 0}; \
 		yyextra->real_location = {1, 0, 1, 0}; \
-		BEGIN(CODE_ALLOW_RESERVED); \
 	} while (0)
 
 #undef YY_BUF_SIZE
@@ -132,19 +131,19 @@ using namespace FIRRTL_FRONTEND;
 	if ((yyleng > 1) && (yytext[yyleng-1] != '\n')) {
 		yyextra->indent_stack.push_back(yyleng-1);
 	}
-	BEGIN(CODE_ALLOW_RESERVED);
+	yy_push_state(CODE_ALLOW_RESERVED, yyscanner);
 }
 }
 
 <COMMENT>{
-\n { unput('\n'); BEGIN(CODE_ALLOW_RESERVED); }
+\n { unput('\n'); yy_pop_state(yyscanner); }
 .* { /* ignore comment body */ }
 }
 
 
 <CODE,CODE_ALLOW_RESERVED>{
-; { BEGIN(COMMENT); }
-\" { BEGIN(STRING); yyextra->lex_buf_string_literal.clear(); }
+; { yy_push_state(COMMENT, yyscanner); }
+\" { yy_push_state(STRING, yyscanner); yyextra->lex_buf_string_literal.clear(); }
 }
 
 
@@ -153,7 +152,7 @@ using namespace FIRRTL_FRONTEND;
 	frontend_firrtl_yyerror(yylloc, yyextra, "Unexpected newline in string literal");
 }
 \" {
-	BEGIN(CODE_ALLOW_RESERVED);
+	yy_pop_state(yyscanner);
 	yylval->string = new std::string(yyextra->lex_buf_string_literal);
 	return TOK_QUOTED_STRING;
 }
@@ -376,14 +375,20 @@ void *frontend_firrtl_avoid_input_warnings() {
 	return (void*)&yyinput;
 }
 
-void firrtl_allow_reserved(firrlt_scanner_t lexer, bool v) {
-	if ((yy_top_state(lexer) == CODE_ALLOW_RESERVED) == v) {
-		YOSYS_NAMESPACE::FIRRTL_FRONTEND::firrtl_state_t *state = frontend_firrtl_yyget_extra(lexer);
-		frontend_firrtl_yyerror(&state->real_location, lexer, "Cannot (dis)allow keywords when they are already (dis)allowed!");
-	}
-	if (v) {
+void firrtl_allow_reserved(firrlt_scanner_t lexer, bool allow) {
+	if (allow) {
+		// CODE -> CODE_ALLOW_RESERVED
+		if (yy_top_state(lexer) != CODE) {
+			YOSYS_NAMESPACE::FIRRTL_FRONTEND::firrtl_state_t *state = frontend_firrtl_yyget_extra(lexer);
+			frontend_firrtl_yyerror(&state->real_location, lexer, "Cannot switch to allow-keyword-state when not in disallow-keyword-state!");
+		}
 		yy_push_state(CODE_ALLOW_RESERVED, lexer);
 	} else {
+		// CODE_ALLOW_RESERVED -> CODE
+		if (yy_top_state(lexer) != CODE_ALLOW_RESERVED) {
+			YOSYS_NAMESPACE::FIRRTL_FRONTEND::firrtl_state_t *state = frontend_firrtl_yyget_extra(lexer);
+			frontend_firrtl_yyerror(&state->real_location, lexer, "Cannot switch to disallow-keyword-state when not in allow-keyword-state!");
+		}
 		yy_pop_state(lexer);
 	}
 }

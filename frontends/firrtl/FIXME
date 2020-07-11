@@ -1,4 +1,5 @@
-- [ ] Only parse reserved words when expected. e.g. `is`/`reader`/`reset` are valid ids
+- [ ] Allow reserved keywords as ids
 - [ ] not yet zero parser conflict
+- [ ] Fix failed tests
 - [ ] why do the intentionally failing circuit take longer to parse?
 
