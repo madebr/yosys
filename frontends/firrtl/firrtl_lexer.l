@@ -152,9 +152,9 @@ using namespace FIRRTL_FRONTEND;
 	yylval->string = new std::string(yyextra->lex_buf_string_literal);
 	return TOK_QUOTED_STRING;
 }
-\\[nt\'"]        { yyextra->lex_buf_string_literal += yytext; }
-[^"\\\n]+          { yyextra->lex_buf_string_literal += yytext; }
-.               { frontend_firrtl_yyerror(yylloc, yyextra, "Unsupported character"); }
+\\[nt\'"]	{ yyextra->lex_buf_string_literal += yytext; }
+[^"\\\n]+	{ yyextra->lex_buf_string_literal += yytext; }
+.	{ frontend_firrtl_yyerror(yylloc, yyextra, "Unsupported character"); }
 <<EOF>> {
 	frontend_firrtl_yyerror(yylloc, yyextra, "Unterminated string literal");
 }
@@ -162,7 +162,6 @@ using namespace FIRRTL_FRONTEND;
 
 
 <CODE>{
-
 
 \n[ ]*.? {
 	if ((yyleng == 1) || (yytext[yyleng-1] == ' ')) {

@@ -1,0 +1,4 @@
+- [ ] Only parse reserved words when expected. e.g. `is`/`reader`/`reset` are valid ids
+- [ ] not yet zero parser conflict
+- [ ] why do the intentionally failing circuit take longer to parse?
+

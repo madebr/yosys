@@ -1,3 +1,7 @@
+Hello,
+I'm in the process of writing a firrtl parser for yosys.
+
+
 firrtl documentation bugs:
 
 - is a modules with ports only, valid syntax?
@@ -37,8 +41,22 @@ circuit MyCircuit:
 7.5 says `rem`, 14.2 says `mod`
 - primop specification misses `incp`, `decp` and `setp`.
 - 14.2 register specification: has too many braces and contins curly braces
+- your grammar contains the following:
+```
+stmt:
+	...
+	expr TOK_IS TOK_INVALID opt_info_attr |
+	...
+expr:
+	...
+	primitive_op '(' expr_varargs opt_int_varargs_comma ')' ;
 
-
+```
+This makeds the following *statement* valid:
+```
+	add(a1, a2) is invalid
+```
+Which should not be allowed, imho.
 
 
 
