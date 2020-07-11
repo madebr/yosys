@@ -222,7 +222,6 @@ stmt:
 	TOK_STOP '(' expr ',' expr ',' TOK_INT ')' opt_info_attr |
 	TOK_PRINTF '(' expr ',' expr ',' TOK_QUOTED_STRING opt_expr_varargs_comma ')' opt_info_attr |
 	TOK_SKIP opt_info_attr ;
-	/* TODO */
 
 stmt_when:
 	TOK_WHEN expr ':' opt_info_attr cond_body opt_else ;

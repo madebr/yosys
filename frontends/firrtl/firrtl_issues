@@ -1,5 +1,62 @@
-Hello,
-I'm in the process of writing a firrtl lexer/parser for yosys and have a few questions about the specification.
+I'm writing a firrtl lexer/parser for yosys using flex/bison and am a bit stuck.
+
+The grammar is not context-free.
+
+This is because firrtl allows an id to be a reserved firrtl keyword.
+
+Examples:
+1. field of bundle named with a keyword:
+```
+input a: {flip flip: UInt}
+```
+This makes it impossible to write the following grammar:
+```
+bundle_field:
+    TOK_FLIP TOK_ID ':' type |
+    TOK_ID ':' type ;
+```
+where TOK_FLIP is a token representing `flip`, `TOK_ID` is a token representing a id (with string)
+Because the following bundle would make this fail:
+```
+input a: {flip: UInt}
+```
+
+2. id named after a keyword used by a stmt, e.g. `inst` ( `signal inst: UInt<1>` )
+```
+inst <= UInt(1)
+```
+The following context-free gammar does not apply, and the parser will fail.
+```
+stmt:
+    TOK_INST TOK_ID TOK_OF TOK_ID opt_info ;
+```
+This is a problem because this conflicts with:
+```
+stmt:
+    exp <= exp ;
+exp:
+    id ;
+```
+The lexer/parser does not know how to interpret the signal `inst`.
+
+3. id named that collides with the integer rules
+e.g.
+```
+input b1: UInt
+```
+`b1` should be interpreted as the string/name `b1` but also as the 1-bit literal `0b1`.
+
+
+
+This is the same problem as Java/C++ disallowing use of reserved keywords as variables.
+That's why I propose to force escaping of reserved keywords by firrtl.
+
+LLVM IR requires variables to be prefixed by `%`,
+which would solve this problem completely.
+
+
+
+
 
 - The firrtl uses a lot of keywords. e.g. the `exp is invalid` statement reserves `is` as a keyword. `flip` is used by bundles.
 But these names can be used as an id for a signal/register/node.
