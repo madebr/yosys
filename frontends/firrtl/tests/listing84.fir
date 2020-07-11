@@ -1,5 +1,6 @@
 circuit Foo :
      module Foo :
+       input a: UInt
        skip
      module Bar :
       input a: UInt<1>

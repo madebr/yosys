@@ -129,7 +129,7 @@ YOSYS_NAMESPACE_END
 %debug
 %locations
 
-// No conflicts allowed!
+// FIXME: Allow no conflicts! IMPORTANT!!!!!
 //%expect 0
 
 %start circuit
@@ -156,12 +156,10 @@ module:
 	TOK_EXTMODULE TOK_ID ':' opt_info_attr TOK_INDENT extmodule_body TOK_DEDENT ;
 
 module_body:
-	port_list stmts_opt |
-	TOK_SKIP ; // Is this ok? Does a module require ports?
+	port_list stmts ; // module requires at least one port + one statement
 
 extmodule_body:
-	port_list |
-	TOK_SKIP ; // Is this ok? Does a extmodule require ports?
+	port_list ;
 
 port_list:
 	port_list port |

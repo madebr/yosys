@@ -1,6 +1,5 @@
 circuit MyCircuit:
     module MyModule:
         input a: UInt
-        
-        input b: UInt
         skip
+        input b: UInt

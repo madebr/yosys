@@ -31,6 +31,8 @@
 #undef yyscan_t
 #endif
 #define yyscan_t firrlt_scanner_t
+
+void firrtl_allow_reserved(firrlt_scanner_t lexer, bool v);
 }
 
 %{
@@ -84,6 +86,7 @@ using namespace FIRRTL_FRONTEND;
 		yyextra->indent_stack.push_back(0); \
 		yyextra->old_location = {1, 0, 1, 0}; \
 		yyextra->real_location = {1, 0, 1, 0}; \
+		BEGIN(CODE_ALLOW_RESERVED); \
 	} while (0)
 
 #undef YY_BUF_SIZE
@@ -97,9 +100,11 @@ using namespace FIRRTL_FRONTEND;
 %option noyywrap
 %option prefix="frontend_firrtl_yy"
 %option reentrant
+%option stack
 %option extra-type="::Yosys::FIRRTL_FRONTEND::firrtl_state_t *"
 
 %x CODE
+%x CODE_ALLOW_RESERVED
 %x COMMENT
 %x STRING
 
@@ -127,17 +132,17 @@ using namespace FIRRTL_FRONTEND;
 	if ((yyleng > 1) && (yytext[yyleng-1] != '\n')) {
 		yyextra->indent_stack.push_back(yyleng-1);
 	}
-	BEGIN(CODE);
+	BEGIN(CODE_ALLOW_RESERVED);
 }
 }
 
 <COMMENT>{
-\n { unput('\n'); BEGIN(CODE); }
+\n { unput('\n'); BEGIN(CODE_ALLOW_RESERVED); }
 .* { /* ignore comment body */ }
 }
 
 
-<CODE>{
+<CODE,CODE_ALLOW_RESERVED>{
 ; { BEGIN(COMMENT); }
 \" { BEGIN(STRING); yyextra->lex_buf_string_literal.clear(); }
 }
@@ -148,7 +153,7 @@ using namespace FIRRTL_FRONTEND;
 	frontend_firrtl_yyerror(yylloc, yyextra, "Unexpected newline in string literal");
 }
 \" {
-	BEGIN(CODE);
+	BEGIN(CODE_ALLOW_RESERVED);
 	yylval->string = new std::string(yyextra->lex_buf_string_literal);
 	return TOK_QUOTED_STRING;
 }
@@ -161,7 +166,7 @@ using namespace FIRRTL_FRONTEND;
 }
 
 
-<CODE>{
+<CODE,CODE_ALLOW_RESERVED>{
 
 \n[ ]*.? {
 	if ((yyleng == 1) || (yytext[yyleng-1] == ' ')) {
@@ -210,6 +215,10 @@ using namespace FIRRTL_FRONTEND;
 	/* Ignore whitespace */
 }
 
+}
+
+<CODE_ALLOW_RESERVED>{
+
 b-?[01_]+ {
 	// Combine these integer parsers for better warning messages?
 	yylval->string = new std::string(yytext);
@@ -255,7 +264,6 @@ x-?[0-9A-Fa-f_]+ {
 "<<" { return TOK_SHIFTLEFT; }
 ">>" { return TOK_SHIFTRIGHT; }
 
-"<=" { return TOK_CONNECT; }
 "<=" { return TOK_CONNECT; }
 "<-" { return TOK_PARTIAL; }
 "=>" { return TOK_DEFINE; }
@@ -336,7 +344,9 @@ x-?[0-9A-Fa-f_]+ {
 "head" { return TOK_HEAD; }
 "tail" { return TOK_TAIL; }
 
+}
 
+<CODE,CODE_ALLOW_RESERVED>{
 
 [a-zA-Z_][a-zA-Z0-9_$]* {
 	yylval->string = new std::string(yytext);
@@ -364,4 +374,16 @@ x-?[0-9A-Fa-f_]+ {
 // this is a hack to avoid the 'yyinput defined but not used' error msgs
 void *frontend_firrtl_avoid_input_warnings() {
 	return (void*)&yyinput;
+}
+
+void firrtl_allow_reserved(firrlt_scanner_t lexer, bool v) {
+	if ((yy_top_state(lexer) == CODE_ALLOW_RESERVED) == v) {
+		YOSYS_NAMESPACE::FIRRTL_FRONTEND::firrtl_state_t *state = frontend_firrtl_yyget_extra(lexer);
+		frontend_firrtl_yyerror(&state->real_location, lexer, "Cannot (dis)allow keywords when they are already (dis)allowed!");
+	}
+	if (v) {
+		yy_push_state(CODE_ALLOW_RESERVED, lexer);
+	} else {
+		yy_pop_state(lexer);
+	}
 }

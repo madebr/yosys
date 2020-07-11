@@ -1,62 +1,49 @@
 Hello,
-I'm in the process of writing a firrtl parser for yosys.
+I'm in the process of writing a firrtl lexer/parser for yosys and have a few questions about the specification.
+
+- The firrtl uses a lot of keywords. e.g. the `exp is invalid` statement reserves `is` as a keyword. `flip` is used by bundles.
+But these names can be used as an id for a signal/register/node.
+This is tested by the regression tests where some modules have a `reset`/`is` port.
+
+This makes creating a context-free grammer using bison
 
 
-firrtl documentation bugs:
 
-- is a modules with ports only, valid syntax?
-e.g.
+
+
+- Is a circuit with no module legal? It might be useful as a placeholder file.
+Somethink like the following:
 ```
 circuit MyCircuit:
-    module MyModule:
-        input i: UInt
-        output o: UInt
+    skip
 ```
-- is a modules with no ports, valid syntax?
-e.g.
-```
-circuit MyCircuit:
-    module MyModule:
-    	wire a: UInt
-    	a <= UInt(44)
-```
-- is an empty module, valid syntax?
-e.g.
-```
-circuit MyCircuit:
-    module MyModule:
-        skip
-```
-- is this valid syntax?
-```
-circuit MyCircuit:
-    module MyModule:
-        input a: UInt<1>
-        output b: UInt
-        when a: b <= UInt<1>(1)
-        else: b<=UInt<1>(0)
-```
+
+- The module specification (section 14.2) says that a module requires at least one port. Is this correct?
+No (ext)module possible with 0 ports?
+
 - asFixed not in specification of primop (14.2)
 - is the modulo/remainder function called `rem` or `mod`?
 7.5 says `rem`, 14.2 says `mod`
-- primop specification misses `incp`, `decp` and `setp`.
-- 14.2 register specification: has too many braces and contins curly braces
-- your grammar contains the following:
+- 14.2 primop specification misses `incp`, `decp` and `setp`.
+- 14.2 register specification is wrong:
+  - need no parentheses around the optional with specification.
+  - reset => (exp, exp) should be surrounded with parentheses instead of curly braces
+- the grammar contains the following:
 ```
 stmt:
 	...
-	expr TOK_IS TOK_INVALID opt_info_attr |
+	exp "is" "invalid" [[info]]
 	...
-expr:
+exp:
 	...
-	primitive_op '(' expr_varargs opt_int_varargs_comma ')' ;
+	primop '(' [[exp ...]] [[int...]] ')'
 
 ```
-This makeds the following *statement* valid:
+This makes the following *statement* valid:
 ```
 	add(a1, a2) is invalid
 ```
-Which should not be allowed, imho.
+This kind of syntax should be disallowed, imho.
 
 
 
